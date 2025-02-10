@@ -1,20 +1,26 @@
 <?php
+
 error_reporting(E_ALL);
 
-// Uncomment this block to pass the first stage
 while (true) {
     fwrite(STDOUT, "$ ");
-// Wait for user input
+    // Wait for user input
     $input = trim(fgets(STDIN));
 
-    if ($input === "") {
+    if ($input === '') {
         continue;
     }
 
-    $parts = explode(" ", $input);
+    $parts = explode(' ', $input);
+    $command = $parts[0]; // Use variable instead of constant
+    $arguments = array_slice($parts, 1);
 
-    ($parts[0] === 'exit') && exit(0);
-
-    printf("%s: command not found\n", $input);
+    if ($command === 'exit') {
+        exit(0);
+    } elseif ($command === 'echo') {
+        echo implode(' ', $arguments) . PHP_EOL;
+    } else {
+        printf("%s: command not found\n", $input);
+    }
 }
 
