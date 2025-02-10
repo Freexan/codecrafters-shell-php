@@ -10,6 +10,11 @@ while (true) {
     if ($input === "") {
         continue;
     }
+
+    $parts = explode(" ", $input);
+
+    ($parts[0] === 'exit') && exit(0);
+
     printf("%s: command not found\n", $input);
 }
 
