@@ -27,10 +27,10 @@ function processCommand($input, $commandsList)
 
 
 $commandsList = [
-    'echo'=> function ($arguments, $commandsList) {
+    'echo'=> function ($arguments) {
         echo implode(' ', $arguments) . PHP_EOL;
     },
-    'exit' => function ($arguments, $commandsList) {
+    'exit' => function () {
         exit(0);
     },
     'type' => function ($arquments, $commandsList) {
@@ -42,12 +42,36 @@ $commandsList = [
 
         if (isset($commandsList[$target_command])){
             echo "$target_command is a shell builtin" . PHP_EOL;
-        } else {
-            echo "$target_command: not found" . PHP_EOL;
+            return;
         }
-    },
 
+                $executablePath = findExecutablePath($target_command);
+                if ($executablePath) {
+                    echo "$target_command is $executablePath" . PHP_EOL;
+                    return;
+                }
+                    echo "$target_command: not found" . PHP_EOL;
+    },
 ];
+
+function getPath()
+{
+    return explode(PATH_SEPARATOR, getenv('PATH'));
+}
+function findExecutablePath($command) {
+    if (file_exists($command) && is_executable($command)) {
+        return $command;
+    }
+
+    $path = getPath();
+    foreach ($path as $dir) {
+        $fullPath = $dir . DIRECTORY_SEPARATOR . $command;
+        if (is_executable($fullPath)) {
+            return ($fullPath);
+        }
+    }
+    return false;
+}
 
 while (true) {
     $input = promptUserInput();
