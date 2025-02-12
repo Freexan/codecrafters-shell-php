@@ -2,9 +2,16 @@
 
 error_reporting(E_ALL);
 
+const PROMPT_SYMBOL = '$ ';
+const COMMAND_NOT_FOUND = '%s: command not found';
+const INVALID_COMMAND = 'invalid_command: not found';
+const SHELL_BUILTIN = '%s is a shell builtin';
+const COMMAND_LOCATION = '%s is %s';
+const EXIT_SUCCESS = 0;
+
 function promptUserInput()
 {
-    fwrite(STDOUT, "$ ");
+    fwrite(STDOUT, PROMPT_SYMBOL);
     return trim(fgets(STDIN));
 }
 
@@ -21,36 +28,34 @@ function processCommand($input, $commandsList)
     if (isset($commandsList[$command])) {
         $commandsList[$command]($arguments, $commandsList);
     } else {
-        printf("%s: command not found\n", $input);
+        printf(COMMAND_NOT_FOUND . PHP_EOL, $input);
     }
 }
 
-
 $commandsList = [
-    'echo'=> function ($arguments) {
+    'echo' => function ($arguments) {
         echo implode(' ', $arguments) . PHP_EOL;
     },
     'exit' => function () {
-        exit(0);
+        exit(EXIT_SUCCESS);
     },
-    'type' => function ($arquments, $commandsList) {
-        if (empty($arquments)) {
-            echo "invalid_command: not found" . PHP_EOL;
+    'type' => function ($arguments, $commandsList) {
+        if (empty($arguments)) {
+            echo INVALID_COMMAND . PHP_EOL;
             return;
         }
-        $target_command = $arquments[0];
+        $target_command = $arguments[0];
 
-        if (isset($commandsList[$target_command])){
-            echo "$target_command is a shell builtin" . PHP_EOL;
+        if (isset($commandsList[$target_command])) {
+            printf(SHELL_BUILTIN . PHP_EOL, $target_command);
             return;
         }
-
-                $executablePath = findExecutablePath($target_command);
-                if ($executablePath) {
-                    echo "$target_command is $executablePath" . PHP_EOL;
-                    return;
-                }
-                    echo "$target_command: not found" . PHP_EOL;
+        $executablePath = findExecutablePath($target_command);
+        if ($executablePath) {
+            printf(COMMAND_LOCATION . PHP_EOL, $target_command, $executablePath);
+            return;
+        }
+        printf(COMMAND_NOT_FOUND . PHP_EOL, $target_command);
     },
 ];
 
@@ -58,7 +63,9 @@ function getPath()
 {
     return explode(PATH_SEPARATOR, getenv('PATH'));
 }
-function findExecutablePath($command) {
+
+function findExecutablePath($command)
+{
     if (file_exists($command) && is_executable($command)) {
         return $command;
     }
