@@ -5,34 +5,26 @@ error_reporting(E_ALL);
 /**
  * Prompt symbol displayed before user input.
  **/
-
 const PROMPT_SYMBOL = '$ ';
+
 /**
  * Template for error messages when a command is not found.
  **/
-
-const COMMAND_NOT_FOUND = '%s: command not found';
-/**
- * Error message for invalid commands.
- **/
-
-const INVALID_COMMAND = 'invalid_command: not found';
+const COMMAND_NOT_FOUND = '%s: not found';
 
 /**
  * Template indicating a built-in shell command.
  **/
-
 const SHELL_BUILTIN = '%s is a shell builtin';
 
 /**
- * Template indicating a built-in shell command.
+ * Template indicating a command location.
  **/
-
 const COMMAND_LOCATION = '%s is %s';
+
 /**
  * Exit code indicating successful execution.
  **/
-
 const EXIT_SUCCESS = 0;
 
 /**
@@ -40,7 +32,6 @@ const EXIT_SUCCESS = 0;
  *
  * @return string Trimmed user input.
  */
-
 function promptUserInput(): string
 {
     fwrite(STDOUT, PROMPT_SYMBOL);
@@ -53,7 +44,7 @@ function promptUserInput(): string
  * Executes the matching command or
  * prints an error if not found.
  *
-* @param string $input User's command
+ * @param string $input User's command
  * @param array $commandsList List of
  * available commands (name => callback).
  * @return void
@@ -71,14 +62,26 @@ function processCommand(string $input, array $commandsList): void
     if (isset($commandsList[$command])) {
         $commandsList[$command]($arguments, $commandsList);
     } else {
-        printf(COMMAND_NOT_FOUND . PHP_EOL, $input);
+        $paths = getPath();
+
+        foreach ($paths as $path) {
+            $fullPath = $path . DIRECTORY_SEPARATOR . $command;
+            if (is_executable($fullPath)) {
+                $output = [];
+                // Use the original command name in the exec call
+                exec($input, $output);
+                echo implode(PHP_EOL, $output) . PHP_EOL;
+                return;
+            }
+        }
+
+        printf(COMMAND_NOT_FOUND . PHP_EOL, $command);
     }
 }
 
 /**
  * A list of available commands and their implementations.
  */
-
 $commandsList = [
     'echo' => function (array $arguments): void {
         echo implode(' ', $arguments) . PHP_EOL;
@@ -88,8 +91,7 @@ $commandsList = [
     },
     'type' => function (array $arguments, array $commandsList): void {
         if (empty($arguments)) {
-            echo INVALID_COMMAND . PHP_EOL;
-            return;
+            printf(COMMAND_NOT_FOUND . PHP_EOL, 'type');
         }
         $targetCommand = $arguments[0];
 
@@ -98,10 +100,10 @@ $commandsList = [
             return;
         }
         $executablePath = findExecutablePath($targetCommand);
-        if ($executablePath !== null) {
+        if ($executablePath !== false) {
             printf(COMMAND_LOCATION . PHP_EOL, $targetCommand, $executablePath);
         } else {
-            echo INVALID_COMMAND . PHP_EOL;
+            printf(COMMAND_NOT_FOUND . PHP_EOL, $targetCommand);
         }
     },
 ];
@@ -113,7 +115,6 @@ $commandsList = [
  * @return array An array of directories
  * from the PATH environment variable.
  */
-
 function getPath(): array
 {
     return explode(PATH_SEPARATOR, getenv('PATH'));
@@ -138,17 +139,14 @@ function findExecutablePath(string $command): string|false
     foreach ($path as $dir) {
         $fullPath = $dir . DIRECTORY_SEPARATOR . $command;
         if (is_executable($fullPath)) {
-            return ($fullPath);
+            return $fullPath;
         }
     }
     return false;
 }
 
+// Main loop
 while (true) {
-    /**
-     * Reads input from the user and processes it as a command.
-     */
-
     $input = promptUserInput();
     processCommand($input, $commandsList);
 }
