@@ -2,35 +2,17 @@
 
 error_reporting(E_ALL);
 
-/**
- * Prompt symbol displayed before user input.
- **/
+// Shell prompt
 const PROMPT_SYMBOL = '$ ';
 
-/**
- * Template for error messages when a command is not found.
- **/
+// Command status messages
 const COMMAND_NOT_FOUND = '%s: not found';
-
-/**
- * Template indicating a built-in shell command.
- **/
 const SHELL_BUILTIN = '%s is a shell builtin';
-
-/**
- * Template indicating a command location.
- **/
 const COMMAND_LOCATION = '%s is %s';
-
-/**
- * Exit code indicating successful execution.
- **/
 const EXIT_SUCCESS = 0;
 
 /**
  * Displays a prompt and reads user input.
- *
- * @return string Trimmed user input.
  */
 function promptUserInput(): string
 {
