@@ -71,6 +71,9 @@ $commandsList = [
     'exit' => function () use (&$commandsList): never {
         exit(EXIT_SUCCESS);
     },
+    'pwd' => function () use (&$commandsList): void {
+        print getcwd() . PHP_EOL;
+    },
     'type' => function (array $arguments, array $commandsList): void {
         if (empty($arguments)) {
             printf(COMMAND_NOT_FOUND . PHP_EOL, 'type');
