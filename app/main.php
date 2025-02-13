@@ -7,6 +7,7 @@ const PROMPT_SYMBOL = '$ ';
 
 // Command status messages
 const COMMAND_NOT_FOUND = '%s: not found';
+const DIRECTORY_OR_FILE_NOT_FOUND = '%s: No such file or directory';
 const SHELL_BUILTIN = '%s is a shell builtin';
 const COMMAND_LOCATION = '%s is %s';
 const EXIT_SUCCESS = 0;
@@ -30,6 +31,18 @@ function executeCommand(string $command, array $args = []): void
         case 'pwd':
             echo getcwd() . PHP_EOL;
             break;
+        case 'cd':
+            if(!is_dir($args[0])){
+                fprintf(STDOUT,DIRECTORY_OR_FILE_NOT_FOUND. PHP_EOL, $args[0]);
+                break;
+            }
+            $targetDirectory = $args[0];
+            if (!chdir($targetDirectory)) {
+                fprintf(STDOUT,DIRECTORY_OR_FILE_NOT_FOUND. PHP_EOL, $targetDirectory);
+            } else {
+                break;
+            }
+
 
         case 'type':
             if (empty($args)) {
