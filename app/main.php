@@ -32,6 +32,9 @@ function executeCommand(string $command, array $args = []): void
             echo getcwd() . PHP_EOL;
             break;
         case 'cd':
+            if ($args[0] === '~') {
+                $args[0] = getenv('HOME');
+            }
             if(!is_dir($args[0])){
                 fprintf(STDOUT,DIRECTORY_OR_FILE_NOT_FOUND. PHP_EOL, $args[0]);
                 break;
