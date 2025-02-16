@@ -31,21 +31,22 @@ function executeCommand(string $command, array $args = []): void
         case 'pwd':
             echo getcwd() . PHP_EOL;
             break;
+
         case 'cd':
             if ($args[0] === '~') {
                 $args[0] = getenv('HOME');
             }
-            if(!is_dir($args[0])){
-                fprintf(STDOUT,DIRECTORY_OR_FILE_NOT_FOUND. PHP_EOL, $args[0]);
+            if (!is_dir($args[0])) {
+                fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $args[0]);
                 break;
             }
             $targetDirectory = $args[0];
             if (!chdir($targetDirectory)) {
-                fprintf(STDOUT,DIRECTORY_OR_FILE_NOT_FOUND. PHP_EOL, $targetDirectory);
+                fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $targetDirectory);
             } else {
                 break;
             }
-
+            break;
 
         case 'type':
             if (empty($args)) {
@@ -94,10 +95,12 @@ function tryExecuteSystemCommand(string $command, array $args = []): void
     }
     printf(COMMAND_NOT_FOUND . PHP_EOL, $command);
 }
-function  getPath(): array
+
+function getPath(): array
 {
     return explode(PATH_SEPARATOR, getenv('PATH'));
 }
+
 function findExecutablePath(string $command): string|false
 {
     $pathDirs = array_merge(['.'], getPath());
@@ -117,11 +120,51 @@ while (true) {
         continue;
     }
 
-    $parts = explode(' ', $input);
-    $command = $parts[0];
-    $arguments = array_slice($parts, 1);
+    $parsedInput = parseQuotedArguments($input);
+    $command = array_shift($parsedInput);
+    $arguments = $parsedInput;
 
     executeCommand($command, $arguments);
 }
+function parseQuotedArguments(string $input): array
+{
+    $result = [];
+    $current = '';
+    $insideSingleQuote = false;
+    $insideDoubleQuote = false;
 
+    for ($i = 0; $i < strlen($input); $i++) {
+        $char = $input[$i];
 
+        if ($char === "'" && !$insideDoubleQuote) {
+            // Одинарні лапки
+            $insideSingleQuote = !$insideSingleQuote;
+        } elseif ($char === '"' && !$insideSingleQuote) {
+            // Подвійні лапки
+            $insideDoubleQuote = !$insideDoubleQuote;
+        } elseif ($char === ' ' && !$insideSingleQuote && !$insideDoubleQuote) {
+            // Розділювач аргументів
+            if ($current !== '') {
+                $result[] = expandEnvironmentVariables($current);
+                $current = '';
+            }
+        } else {
+            $current .= $char;
+        }
+    }
+
+    if ($current !== '') {
+        $result[] = expandEnvironmentVariables($current);
+    }
+
+    return $result;
+}
+function expandEnvironmentVariables(string $value): string
+{
+    if (str_contains($value, '$')) {
+        return preg_replace_callback('/\$(\w+)/', function ($matches) {
+            return getenv($matches[1]) ?: $matches[0];
+        }, $value);
+    }
+    return $value;
+}
