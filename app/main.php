@@ -100,13 +100,11 @@ function  getPath(): array
 }
 function findExecutablePath(string $command): string|false
 {
-    if (file_exists($command) && is_executable($command)) {
-        return $command;
-    }
-    $path = getPath();
-    foreach ($path as $dir) {
+    $pathDirs = array_merge(['.'], getPath());
+
+    foreach ($pathDirs as $dir) {
         $fullPath = $dir . DIRECTORY_SEPARATOR . $command;
-        if (is_executable($fullPath)) {
+        if (file_exists($fullPath) && is_executable($fullPath)) {
             return $fullPath;
         }
     }
