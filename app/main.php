@@ -25,6 +25,17 @@ function executeCommand(string $command, array $args = []): void
             echo implode(' ', $args) . PHP_EOL;
             break;
 
+        case 'cat':
+            // Перевірка існування файлів перед виконанням
+            foreach ($args as $file) {
+                if (!file_exists($file)) {
+                    fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $file);
+                    return;
+                }
+            }
+            tryExecuteSystemCommand($command, $args);
+            break;
+
         case 'exit':
             exit(EXIT_SUCCESS);
 
@@ -81,7 +92,7 @@ function isBuiltinCommand(string $command): bool
 
 function tryExecuteSystemCommand(string $command, array $args = []): void
 {
-    $fullCommand = $command . ' ' . implode(' ', $args);
+    $fullCommand = $command . ' ' . implode(' ', array_map('escapeshellarg', $args));
     $paths = getPath();
 
     foreach ($paths as $path) {
@@ -126,6 +137,7 @@ while (true) {
 
     executeCommand($command, $arguments);
 }
+
 function parseQuotedArguments(string $input): array
 {
     $result = [];
@@ -137,15 +149,12 @@ function parseQuotedArguments(string $input): array
         $char = $input[$i];
 
         if ($char === "'" && !$insideDoubleQuote) {
-            // Одинарні лапки
             $insideSingleQuote = !$insideSingleQuote;
         } elseif ($char === '"' && !$insideSingleQuote) {
-            // Подвійні лапки
             $insideDoubleQuote = !$insideDoubleQuote;
         } elseif ($char === ' ' && !$insideSingleQuote && !$insideDoubleQuote) {
-            // Розділювач аргументів
             if ($current !== '') {
-                $result[] = expandEnvironmentVariables($current);
+                $result[] = $current;
                 $current = '';
             }
         } else {
@@ -154,17 +163,8 @@ function parseQuotedArguments(string $input): array
     }
 
     if ($current !== '') {
-        $result[] = expandEnvironmentVariables($current);
+        $result[] = $current;
     }
 
     return $result;
-}
-function expandEnvironmentVariables(string $value): string
-{
-    if (str_contains($value, '$')) {
-        return preg_replace_callback('/\$(\w+)/', function ($matches) {
-            return getenv($matches[1]) ?: $matches[0];
-        }, $value);
-    }
-    return $value;
 }
