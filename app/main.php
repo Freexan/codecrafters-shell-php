@@ -138,33 +138,43 @@ while (true) {
     executeCommand($command, $arguments);
 }
 
-function parseQuotedArguments(string $input): array
+function parseQuotedArguments(string $inputString): array
 {
-    $result = [];
-    $current = '';
-    $insideSingleQuote = false;
-    $insideDoubleQuote = false;
+    $resultParsedArguments = [];
+    $currentWord = '';
+    $isInsideSingleQuote = false;
+    $isInsideDoubleQuote = false;
+    $isEscapeActive = false;
 
-    for ($i = 0; $i < strlen($input); $i++) {
-        $char = $input[$i];
+    for ($currentIndex = 0; $currentIndex < strlen($inputString); $currentIndex++) {
+        $char = $inputString[$currentIndex];
 
-        if ($char === "'" && !$insideDoubleQuote) {
-            $insideSingleQuote = !$insideSingleQuote;
-        } elseif ($char === '"' && !$insideSingleQuote) {
-            $insideDoubleQuote = !$insideDoubleQuote;
-        } elseif ($char === ' ' && !$insideSingleQuote && !$insideDoubleQuote) {
-            if ($current !== '') {
-                $result[] = $current;
-                $current = '';
+        if ($isEscapeActive) {
+            $currentWord .= $char;
+            $isEscapeActive = false;
+            continue;
+        }
+        if ($char === '\\' && !$isInsideSingleQuote && !$isInsideDoubleQuote) {
+            $isEscapeActive = true;
+            continue;
+        }
+        if ($char === "'" && !$isInsideDoubleQuote) {
+            $isInsideSingleQuote = !$isInsideSingleQuote;
+        } elseif ($char === '"' && !$isInsideSingleQuote) {
+            $isInsideDoubleQuote = !$isInsideDoubleQuote;
+        } elseif ($char === ' ' && !$isInsideSingleQuote && !$isInsideDoubleQuote) {
+            if ($currentWord !== '') {
+                $resultParsedArguments[] = $currentWord;
+                $currentWord = '';
             }
         } else {
-            $current .= $char;
+            $currentWord .= $char;
         }
     }
 
-    if ($current !== '') {
-        $result[] = $current;
+    if ($currentWord !== '') {
+        $resultParsedArguments[] = $currentWord;
     }
 
-    return $result;
+    return $resultParsedArguments;
 }
