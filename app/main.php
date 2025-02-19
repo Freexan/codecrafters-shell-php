@@ -22,7 +22,7 @@ function executeCommand(string $command, array $args, array $config): void
             echo implode(' ', $args) . PHP_EOL;
             break;
 
-        case 'cat':
+        case $config['lookup']['cat']:
             foreach ($args as $file) {
                 if (!file_exists($file)) {
                     fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, $file);
@@ -39,7 +39,11 @@ function executeCommand(string $command, array $args, array $config): void
             echo getcwd() . PHP_EOL;
             break;
 
-        case 'cd':
+        case $config['lookup']['cd']:
+            if (empty($args)) {
+                fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, '~');
+                return;
+            }
             if ($args[0] === '~') {
                 $args[0] = $config['home'];
             }
@@ -50,8 +54,6 @@ function executeCommand(string $command, array $args, array $config): void
             $targetDirectory = $args[0];
             if (!chdir($targetDirectory)) {
                 fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, $targetDirectory);
-            } else {
-                break;
             }
             break;
 
@@ -80,7 +82,6 @@ function executeCommand(string $command, array $args, array $config): void
             break;
     }
 }
-
 function isBuiltinCommand(string $command, array $lookup): bool
 {
     return in_array($command, $lookup);
