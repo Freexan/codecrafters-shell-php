@@ -2,101 +2,96 @@
 
 error_reporting(E_ALL);
 
-// Shell prompt
-const PROMPT_SYMBOL = '$ ';
+$generalConfig = require 'config/general.php';
+$systemConfig = require 'config/system.php';
+$commandsConfig = require 'config/commands.php';
 
-// Command status messages
-const COMMAND_NOT_FOUND = '%s: not found';
-const DIRECTORY_OR_FILE_NOT_FOUND = '%s: No such file or directory';
-const SHELL_BUILTIN = '%s is a shell builtin';
-const COMMAND_LOCATION = '%s is %s';
-const EXIT_SUCCESS = 0;
+$config = array_merge($generalConfig, $systemConfig, $commandsConfig);
 
-function UserInputInBash(): string
+
+function UserInputInBash(string $promptSymbol): string
 {
-    fwrite(STDOUT, PROMPT_SYMBOL);
+    fwrite(STDOUT, $promptSymbol);
     return trim(fgets(STDIN));
 }
 
-function executeCommand(string $command, array $args = []): void
+function executeCommand(string $command, array $args, array $config): void
 {
     switch ($command) {
-        case 'echo':
+        case $config['lookup']['echo']:
             echo implode(' ', $args) . PHP_EOL;
             break;
 
         case 'cat':
-            // Перевірка існування файлів перед виконанням
             foreach ($args as $file) {
                 if (!file_exists($file)) {
-                    fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $file);
+                    fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, $file);
                     return;
                 }
             }
-            tryExecuteSystemCommand($command, $args);
+            tryExecuteSystemCommand($command, $args, $config);
             break;
 
-        case 'exit':
-            exit(EXIT_SUCCESS);
+        case $config['lookup']['exit']:
+            exit($config['exitSuccess']);
 
-        case 'pwd':
+        case $config['lookup']['pwd']:
             echo getcwd() . PHP_EOL;
             break;
 
         case 'cd':
             if ($args[0] === '~') {
-                $args[0] = getenv('HOME');
+                $args[0] = $config['home'];
             }
             if (!is_dir($args[0])) {
-                fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $args[0]);
+                fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, $args[0]);
                 break;
             }
             $targetDirectory = $args[0];
             if (!chdir($targetDirectory)) {
-                fprintf(STDOUT, DIRECTORY_OR_FILE_NOT_FOUND . PHP_EOL, $targetDirectory);
+                fprintf(STDOUT, $config['directoryOrFileNotFound'] . PHP_EOL, $targetDirectory);
             } else {
                 break;
             }
             break;
 
-        case 'type':
+        case $config['lookup']['type']:
             if (empty($args)) {
-                printf(COMMAND_NOT_FOUND . PHP_EOL, 'type');
+                printf($config['commandNotFound'] . PHP_EOL, $config['lookup']['type']);
                 break;
             }
 
             $targetBashCommand = $args[0];
-            if (isBuiltinCommand($targetBashCommand)) {
-                printf(SHELL_BUILTIN . PHP_EOL, $targetBashCommand);
+            if (isBuiltinCommand($targetBashCommand, $config['lookup'])) {
+                printf($config['shellBuiltin'] . PHP_EOL, $targetBashCommand);
                 break;
             }
 
-            $executablePath = findExecutablePath($targetBashCommand);
+            $executablePath = findExecutablePath($targetBashCommand, $config);
             if ($executablePath !== false) {
-                printf(COMMAND_LOCATION . PHP_EOL, $targetBashCommand, $executablePath);
+                printf($config['commandLocation'] . PHP_EOL, $targetBashCommand, $executablePath);
             } else {
-                printf(COMMAND_NOT_FOUND . PHP_EOL, $targetBashCommand);
+                printf($config['commandNotFound'] . PHP_EOL, $targetBashCommand);
             }
             break;
 
         default:
-            tryExecuteSystemCommand($command, $args);
+            tryExecuteSystemCommand($command, $args, $config);
             break;
     }
 }
 
-function isBuiltinCommand(string $command): bool
+function isBuiltinCommand(string $command, array $lookup): bool
 {
-    return in_array($command, ['echo', 'exit', 'pwd', 'type']);
+    return in_array($command, $lookup);
 }
 
-function tryExecuteSystemCommand(string $command, array $args = []): void
+function tryExecuteSystemCommand(string $command, array $args, array $config): void
 {
     $fullCommand = $command . ' ' . implode(' ', array_map('escapeshellarg', $args));
-    $paths = getPath();
 
-    foreach ($paths as $path) {
-        $fullPath = $path . DIRECTORY_SEPARATOR . $command;
+    foreach ($config['path'] as $pathDir) {
+        $fullPath = $pathDir . DIRECTORY_SEPARATOR . $command;
         if (is_executable($fullPath)) {
             $output = [];
             exec($fullCommand, $output);
@@ -104,17 +99,12 @@ function tryExecuteSystemCommand(string $command, array $args = []): void
             return;
         }
     }
-    printf(COMMAND_NOT_FOUND . PHP_EOL, $command);
+    printf($config['commandNotFound'] . PHP_EOL, $command);
 }
 
-function getPath(): array
+function findExecutablePath(string $command, array $config): string|false
 {
-    return explode(PATH_SEPARATOR, getenv('PATH'));
-}
-
-function findExecutablePath(string $command): string|false
-{
-    $pathDirs = array_merge(['.'], getPath());
+    $pathDirs = array_merge(['.'], $config['path']);
 
     foreach ($pathDirs as $dir) {
         $fullPath = $dir . DIRECTORY_SEPARATOR . $command;
@@ -126,7 +116,7 @@ function findExecutablePath(string $command): string|false
 }
 
 while (true) {
-    $input = UserInputInBash();
+    $input = UserInputInBash($config['promptSymbol']);
     if ($input === '') {
         continue;
     }
@@ -135,7 +125,7 @@ while (true) {
     $command = array_shift($parsedInput);
     $arguments = $parsedInput;
 
-    executeCommand($command, $arguments);
+    executeCommand($command, $arguments, $config);
 }
 
 function parseQuotedArguments(string $inputString): array
@@ -147,29 +137,38 @@ function parseQuotedArguments(string $inputString): array
     $isEscapeActive = false;
 
     for ($currentIndex = 0; $currentIndex < strlen($inputString); $currentIndex++) {
-        $char = $inputString[$currentIndex];
+        $currentChar = $inputString[$currentIndex];
 
         if ($isEscapeActive) {
-            $currentWord .= $char;
+            $currentWord .= $currentChar;
             $isEscapeActive = false;
             continue;
         }
-        if ($char === '\\' && !$isInsideSingleQuote && !$isInsideDoubleQuote) {
+
+        if ($currentChar === '\\') {
             $isEscapeActive = true;
             continue;
         }
-        if ($char === "'" && !$isInsideDoubleQuote) {
-            $isInsideSingleQuote = !$isInsideSingleQuote;
-        } elseif ($char === '"' && !$isInsideSingleQuote) {
+
+        if ($currentChar === '"' && !$isInsideSingleQuote) {
             $isInsideDoubleQuote = !$isInsideDoubleQuote;
-        } elseif ($char === ' ' && !$isInsideSingleQuote && !$isInsideDoubleQuote) {
+            continue;
+        }
+
+        if ($currentChar === "'" && !$isInsideDoubleQuote) {
+            $isInsideSingleQuote = !$isInsideSingleQuote;
+            continue;
+        }
+
+        if ($currentChar === ' ' && !$isInsideSingleQuote && !$isInsideDoubleQuote) {
             if ($currentWord !== '') {
                 $resultParsedArguments[] = $currentWord;
                 $currentWord = '';
             }
-        } else {
-            $currentWord .= $char;
+            continue;
         }
+
+        $currentWord .= $currentChar;
     }
 
     if ($currentWord !== '') {
